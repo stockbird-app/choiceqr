@@ -1,0 +1,101 @@
+plugins:
+  - rubocop-rspec
+
+AllCops:
+  NewCops: enable
+  SuggestExtensions: false
+  TargetRubyVersion: 3.3
+  Include:
+    - "lib/**/*.rb"
+    - "spec/**/*.rb"
+    - "choiceqr.gemspec"
+    - "Rakefile"
+  Exclude:
+    - "vendor/**/*"
+
+# ── Style ────────────────────────────────────────────────────────────────────
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyleForMultiline: comma
+
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: comma
+
+# ── Layout ───────────────────────────────────────────────────────────────────
+
+Layout/LineLength:
+  Max: 120
+
+# ── Metrics ──────────────────────────────────────────────────────────────────
+
+# Client is a well-structured single class; its length is justified.
+Metrics/ClassLength:
+  Max: 150
+
+# Multi-line hash/array literals count as 1 line, keeping test helper hashes
+# from triggering the method-length cop.
+Metrics/MethodLength:
+  CountAsOne:
+    - array
+    - hash
+
+# The API has many mutation endpoints (create/update/delete/position/attach…)
+# per resource; resource wrapper classes stay small per-method regardless.
+Metrics/ModuleLength:
+  Max: 150
+
+# A few list endpoints (e.g. Feedbacks#list) mirror the API's own set of
+# independent optional query filters, which runs to 6.
+Metrics/ParameterLists:
+  Max: 6
+
+# ── Naming ───────────────────────────────────────────────────────────────────
+
+# #delete is a standard CRUD action name that returns true on success; #mutate
+# and #destroy are the Resources::Base helpers it (and #update) are built on.
+# None of them are predicates despite the boolean return value.
+Naming/PredicateMethod:
+  AllowedPatterns:
+    - "^delete$"
+    - "^mutate$"
+    - "^destroy$"
+
+# ── Gemspec ──────────────────────────────────────────────────────────────────
+
+# Dev dependencies in gemspec is standard for distributed gems.
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
+# ── RSpec ────────────────────────────────────────────────────────────────────
+
+RSpec/ExampleLength:
+  Max: 20
+
+RSpec/MultipleExpectations:
+  Max: 4
+
+RSpec/NestedGroups:
+  Max: 4
+
+RSpec/ContextWording:
+  Prefixes:
+    - when
+    - with
+    - without
+    - and
+    - for
+
+# The gem is "choiceqr" (matching the module ChoiceQR), not "choice_qr" —
+# the default inflector would split the QR acronym into its own word.
+RSpec/SpecFilePathFormat:
+  CustomTransform:
+    ChoiceQR: choiceqr
