@@ -17,6 +17,7 @@ lib/choiceqr/
 ├── errors.rb              # Full error class hierarchy
 ├── key_transformer.rb     # camelCase ↔ snake_case key conversion (with a posID/_id override — see below)
 ├── resource.rb            # Generic response object (dot + hash access), recursively wraps nested data
+├── webhook_event.rb       # Parses an incoming webhook payload (envelope + Resource-wrapped `data`); no client.webhooks — see below
 ├── resources/
 │   ├── base.rb             # Shared request helpers (fetch_one/fetch_list/post_create/mutate/destroy)
 │   ├── place.rb             # GET /place
