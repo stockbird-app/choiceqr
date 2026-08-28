@@ -228,7 +228,26 @@ client = ChoiceQR::Client.new(
 
 ## Webhooks
 
-ChoiceQR pushes events (menu changes, new orders, booking updates, …) to a Webhook URL you configure when creating your application — there is no API for managing webhook subscriptions, so this gem does not include a webhook client. See [Webhooks](https://open-api.choiceqr.com/docs/content/webhooks) for the event payload shape; the `data` field of each event matches the corresponding resource's response schema, so you can wrap it yourself with `ChoiceQR::Resource.new(event["data"])` if useful.
+ChoiceQR pushes events (menu changes, new orders, booking updates, …) to a Webhook URL you configure when creating your application — there is no API for managing webhook subscriptions, so there's no `client.webhooks`. `ChoiceQR::WebhookEvent` parses the payload your endpoint receives:
+
+```ruby
+post "/webhooks/choiceqr" do
+  event = ChoiceQR::WebhookEvent.parse(request.body.read)
+
+  case event.type
+  when "dish.created", "dish.changed"
+    Dish.upsert_from_choiceqr(event.data) # same shape as Dishes#get
+  when "order.created"
+    Order.create_from_choiceqr(event.data)
+  when "section.positionChanged"
+    Section.reorder(event.data.items) # array of section ids
+  end
+end
+```
+
+`event.data`'s shape depends on `event.type` — usually the same entity schema the matching resource method returns, but `*.positionChanged` events carry `{items: [...ids]}` and `*.removed` events carry just an id. `ChoiceQR::WebhookEvent::TYPES` lists every documented event type (not enforced — an unrecognized `type` still parses fine). See [Webhooks](https://open-api.choiceqr.com/docs/content/webhooks) for the full type → shape mapping.
+
+**ChoiceQR does not document a signature or secret for verifying a webhook's authenticity.** `WebhookEvent` parses the payload; it does not, and cannot, confirm the request actually came from ChoiceQR.
 
 ## Development
 
