@@ -25,6 +25,16 @@ RSpec.describe ChoiceQR::Resources::Orders do
       expect(stub).to have_been_requested.once
     end
 
+    it "formats a Date :since as an ISO8601 date string, without raising" do
+      since = Date.new(2021, 6, 22)
+      stub = stub_request(:get, "#{API_BASE}/orders/list")
+             .with(query: { "since" => since.iso8601 })
+             .to_return(status: 200, body: json([]), headers: api_headers)
+
+      client.orders.list(since: since)
+      expect(stub).to have_been_requested.once
+    end
+
     it "joins an Array of branch ids with commas" do
       stub = stub_request(:get, "#{API_BASE}/orders/list")
              .with(query: { "branches" => "b1,b2" })

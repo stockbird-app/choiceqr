@@ -11,7 +11,10 @@ module ChoiceQR
     #   )
     class Feedbacks < Base
       def list(from: nil, to: nil, limit: nil, offset: nil, type: nil, sort: nil)
-        fetch_list("feedbacks", params: { from: from, to: to, limit: limit, offset: offset, type: type, sort: sort })
+        fetch_list("feedbacks", params: {
+                     from: format_time(from), to: format_time(to),
+                     limit: limit, offset: offset, type: type, sort: sort
+                   })
       end
 
       def get(id)

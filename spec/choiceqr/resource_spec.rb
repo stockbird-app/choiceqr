@@ -38,6 +38,11 @@ RSpec.describe ChoiceQR::Resource do
     expect(resource.pack).to be_nil
   end
 
+  it "does not raise when constructed with nil (an empty 200/201 response body)" do
+    empty = described_class.new(nil)
+    expect(empty.to_h).to eq({})
+  end
+
   it "raises NoMethodError for unknown attributes" do
     expect { resource.nonexistent }.to raise_error(NoMethodError)
   end

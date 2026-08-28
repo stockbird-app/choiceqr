@@ -169,6 +169,8 @@ API keys are transformed as follows:
 - `posID` → `:pos_id` (the one field ChoiceQR capitalizes as an acronym instead of plain camelCase)
 - `_id` → `:id` (leading underscore stripped)
 
+A field whose name collides with a real `Object` method (`hash`, `method`, `class`, `send`, …) isn't reachable via dot access — Ruby dispatches to the real method first. Use `resource[:hash]`-style hash access for those instead.
+
 ## Error handling
 
 All errors inherit from `ChoiceQR::Error` and carry `http_status`, `http_body`, `http_headers`, and `error_name` (the API's own `"ValidationError"`/`"ServiceError"` classification, where present):
