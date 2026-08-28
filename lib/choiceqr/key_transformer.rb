@@ -75,6 +75,8 @@ module ChoiceQR
 
     def camelize(str)
       segments = merge_acronyms(str.split("_"))
+      return "" if segments.empty? # e.g. an all-underscore key like :_ or :__
+
       segments[0] + segments[1..].join
     end
 

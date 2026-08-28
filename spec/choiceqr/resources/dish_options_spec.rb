@@ -15,6 +15,16 @@ RSpec.describe ChoiceQR::Resources::DishOptions do
     end
   end
 
+  describe "#get" do
+    it "GETs a single option by id" do
+      stub = stub_request(:get, "#{API_BASE}/menu/en/options/opt1")
+             .to_return(status: 200, body: json(option_payload), headers: api_headers)
+
+      expect(client.dish_options.get("opt1").name).to eq("Size")
+      expect(stub).to have_been_requested.once
+    end
+  end
+
   describe "#create" do
     it "POSTs the option payload" do
       stub = stub_request(:post, "#{API_BASE}/menu/en/options")

@@ -13,8 +13,16 @@ module ChoiceQR
   # as a Resource too, and every nested Array of Hashes becomes an Array of
   # Resource, giving dot access all the way down.
   class Resource
+    # +attributes+ is nil for a 200/201 response with an empty body, which
+    # the API returns for a handful of endpoints.
     def initialize(attributes)
-      @attributes = KeyTransformer.to_snake(attributes).transform_values { |v| self.class.wrap(v) }
+      # Only this level's keys need converting: #wrap recurses into
+      # Resource.new for every nested Hash, which converts its own keys in
+      # turn. Pre-converting the whole tree here (e.g. via
+      # KeyTransformer.to_snake) would redo that work once per ancestor for
+      # every nested node.
+      @attributes = (attributes || {}).transform_keys { |k| KeyTransformer.snake_key(k) }
+                                      .transform_values { |v| self.class.wrap(v) }
     end
 
     # Wraps a single value: Hash → Resource, Array → Array of wrapped values,

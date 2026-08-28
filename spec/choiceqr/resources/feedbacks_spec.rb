@@ -14,6 +14,17 @@ RSpec.describe ChoiceQR::Resources::Feedbacks do
       expect(stub).to have_been_requested.once
       expect(feedbacks.first.rate_serve).to eq(5)
     end
+
+    it "formats Date/Time :from and :to as ISO8601 strings, not Ruby's default #to_s" do
+      from = Date.new(2026, 1, 1)
+      to = Time.utc(2026, 1, 31, 23, 59, 59)
+      stub = stub_request(:get, "#{API_BASE}/feedbacks")
+             .with(query: { "from" => from.iso8601, "to" => to.iso8601(3) })
+             .to_return(status: 200, body: json([]), headers: api_headers)
+
+      client.feedbacks.list(from: from, to: to)
+      expect(stub).to have_been_requested.once
+    end
   end
 
   describe "#get" do

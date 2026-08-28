@@ -44,6 +44,11 @@ RSpec.describe ChoiceQR::KeyTransformer do
     it "leaves an all-caps single-segment key unchanged (e.g. a marketplace code)" do
       expect(described_class.camel_key(:WOLT)).to eq("WOLT")
     end
+
+    it "does not raise on an all-underscore key" do
+      expect(described_class.camel_key(:_)).to eq("_")
+      expect(described_class.camel_key(:"")).to eq("")
+    end
   end
 
   describe ".to_snake" do

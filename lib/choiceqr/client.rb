@@ -37,11 +37,16 @@ module ChoiceQR
 
     # @param token           [String]  long-lived access token obtained via the OAuth flow
     #                                  (see .exchange_token). Valid for ~5 years.
-    # @param default_language [String] default :language path segment for menu/location calls (default: "en")
-    # @param timeout          [Integer] read timeout in seconds (default: 30)
-    # @param open_timeout     [Integer] connection timeout in seconds (default: 5)
+    # @param default_language [String] default :language path segment for menu/location calls
+    # @param timeout          [Integer] read timeout in seconds
+    # @param open_timeout     [Integer] connection timeout in seconds
     # @param logger           [Logger, nil] optional logger; receives request/response details
-    def initialize(token:, default_language: "en", timeout: 30, open_timeout: 5, logger: nil)
+    #
+    # +default_language+/+timeout+/+open_timeout+/+logger+ each default to the
+    # matching value on +ChoiceQR.configuration+ (see ChoiceQR.configure).
+    def initialize(token:, default_language: ChoiceQR.configuration.default_language,
+                   timeout: ChoiceQR.configuration.timeout, open_timeout: ChoiceQR.configuration.open_timeout,
+                   logger: ChoiceQR.configuration.logger)
       @token             = token
       @default_language  = default_language.to_s
       @timeout           = timeout
@@ -119,34 +124,17 @@ module ChoiceQR
     #   result.domain      # => company domain
     #
     # See https://open-api.choiceqr.com/docs/content/authorization
-    def self.exchange_token(code:, client_id:, secret:, timeout: 30, open_timeout: 5)
+    def self.exchange_token(code:, client_id:, secret:,
+                            timeout: ChoiceQR.configuration.timeout,
+                            open_timeout: ChoiceQR.configuration.open_timeout)
       response = post_token_request(code: code, client_id: client_id, secret: secret,
                                     timeout: timeout, open_timeout: open_timeout)
+      body = parse_response_body(response.body)
 
-      unless response.success?
-        raise AuthenticationError.new(
-          "Failed to exchange code for a token",
-          http_status: response.status,
-          http_body: response.body
-        )
-      end
+      return Resource.new(body) if response.success?
 
-      Resource.new(JSON.parse(response.body))
+      raise_error_for(response, body)
     end
-
-    def self.post_token_request(code:, client_id:, secret:, timeout:, open_timeout:)
-      connection = Faraday.new(url: API_BASE_URL) do |f|
-        f.options.timeout      = timeout
-        f.options.open_timeout = open_timeout
-        f.adapter Faraday.default_adapter
-      end
-
-      connection.post("auth/connect/token") do |req|
-        req.headers["Content-Type"] = "application/json"
-        req.body = JSON.generate(code: code, clientId: client_id, secret: secret)
-      end
-    end
-    private_class_method :post_token_request
 
     # Makes an authenticated HTTP request. Used internally by the resource
     # wrapper classes (client.sections, client.orders, …).
@@ -175,25 +163,11 @@ module ChoiceQR
     end
 
     def handle_response(response)
-      body = parse_body(response.body)
+      body = self.class.send(:parse_response_body, response.body)
 
       return { body: body } if (200..299).cover?(response.status)
 
-      raise_error_for(response, body)
-    end
-
-    def raise_error_for(response, body)
-      klass, default_msg = ERROR_MAP[response.status]
-      klass       ||= response.status >= 500 ? ServerError : Error
-      default_msg ||= response.status >= 500 ? "Server error" : "Unexpected status #{response.status}"
-
-      raise klass.new(
-        error_message(body, default_msg),
-        http_status: response.status,
-        http_body: response.body,
-        http_headers: response.headers,
-        error_name: body.is_a?(Hash) ? body["name"] : nil
-      )
+      self.class.send(:raise_error_for, response, body)
     end
 
     def connection
@@ -223,18 +197,52 @@ module ChoiceQR
       }.merge(extra)
     end
 
-    def parse_body(body)
-      return nil if body.nil? || body.empty?
+    class << self
+      private
 
-      JSON.parse(body, symbolize_names: false)
-    rescue JSON::ParserError
-      body
-    end
+      def post_token_request(code:, client_id:, secret:, timeout:, open_timeout:)
+        connection = Faraday.new(url: API_BASE_URL) do |f|
+          f.options.timeout      = timeout
+          f.options.open_timeout = open_timeout
+          f.adapter Faraday.default_adapter
+        end
 
-    def error_message(parsed_body, fallback)
-      return fallback unless parsed_body.is_a?(Hash)
+        connection.post("auth/connect/token") do |req|
+          req.headers["Content-Type"] = "application/json"
+          req.body = JSON.generate(code: code, clientId: client_id, secret: secret)
+        end
+      end
 
-      parsed_body["message"] || fallback
+      # Shared by both the class-level .exchange_token and instance-level
+      # #request — the two entry points that talk to the API before/without
+      # going through the same instance.
+      def parse_response_body(body)
+        return nil if body.nil? || body.empty?
+
+        JSON.parse(body, symbolize_names: false)
+      rescue JSON::ParserError
+        body
+      end
+
+      def raise_error_for(response, body)
+        klass, default_msg = ERROR_MAP[response.status]
+        klass       ||= response.status >= 500 ? ServerError : Error
+        default_msg ||= response.status >= 500 ? "Server error" : "Unexpected status #{response.status}"
+
+        raise klass.new(
+          error_message(body, default_msg),
+          http_status: response.status,
+          http_body: response.body,
+          http_headers: response.headers,
+          error_name: body.is_a?(Hash) ? body["name"] : nil
+        )
+      end
+
+      def error_message(parsed_body, fallback)
+        return fallback unless parsed_body.is_a?(Hash)
+
+        parsed_body["message"] || fallback
+      end
     end
   end
 end

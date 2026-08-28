@@ -56,8 +56,13 @@ module ChoiceQR
 
       def format_time(value)
         return nil if value.nil?
+        return value.to_s unless value.respond_to?(:iso8601)
 
-        value.respond_to?(:iso8601) ? value.iso8601(3) : value.to_s
+        # Time/DateTime#iso8601 take an optional fractional-digits argument;
+        # Date#iso8601 (no time component) takes none. Check arity instead of
+        # is_a?(Date) so any iso8601-compatible object works, not just those
+        # two stdlib classes.
+        value.method(:iso8601).arity.zero? ? value.iso8601 : value.iso8601(3)
       end
     end
   end

@@ -1,3 +1,4 @@
+require "date"
 require "webmock/rspec"
 require "choiceqr"
 

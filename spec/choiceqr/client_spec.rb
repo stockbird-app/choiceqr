@@ -15,6 +15,18 @@ RSpec.describe ChoiceQR::Client do
     it "accepts optional timeout arguments" do
       expect(build_client(timeout: 60, open_timeout: 10)).to be_a(described_class)
     end
+
+    it "defaults from ChoiceQR.configuration when a kwarg is omitted" do
+      ChoiceQR.configure { |config| config.default_language = "cs" }
+
+      expect(build_client.default_language).to eq("cs")
+    end
+
+    it "still lets an explicit kwarg override ChoiceQR.configuration" do
+      ChoiceQR.configure { |config| config.default_language = "cs" }
+
+      expect(build_client(default_language: "de").default_language).to eq("de")
+    end
   end
 
   describe "resource accessors" do
@@ -49,11 +61,25 @@ RSpec.describe ChoiceQR::Client do
       expect(result.var_symbol).to eq("00000")
     end
 
-    it "raises AuthenticationError when the exchange fails" do
+    it "raises ValidationError on a 400" do
       stub_request(:post, token_url).to_return(status: 400, body: json(message: "Invalid code"), headers: api_headers)
 
       expect { described_class.exchange_token(code: "bad", client_id: "cid", secret: "sec") }
+        .to raise_error(ChoiceQR::ValidationError, /Invalid code/)
+    end
+
+    it "raises AuthenticationError on a 401" do
+      stub_request(:post, token_url).to_return(status: 401, body: "", headers: api_headers)
+
+      expect { described_class.exchange_token(code: "bad", client_id: "cid", secret: "sec") }
         .to raise_error(ChoiceQR::AuthenticationError)
+    end
+
+    it "raises ServerError (not AuthenticationError) on a 500" do
+      stub_request(:post, token_url).to_return(status: 500, body: json(message: "Boom"), headers: api_headers)
+
+      expect { described_class.exchange_token(code: "abc", client_id: "cid", secret: "sec") }
+        .to raise_error(ChoiceQR::ServerError)
     end
   end
 
